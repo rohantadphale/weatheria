@@ -1,8 +1,0 @@
-/Users/rohan/Documents/Github/weatheria/src/main/java/com/weatheria/weatheria/WeatheriaApplication.java
-/Users/rohan/Documents/Github/weatheria/src/main/java/com/weatheria/weatheria/config/AppConfig.java
-/Users/rohan/Documents/Github/weatheria/src/main/java/com/weatheria/weatheria/config/OpenApiConfig.java
-/Users/rohan/Documents/Github/weatheria/src/main/java/com/weatheria/weatheria/controller/WeatherController.java
-/Users/rohan/Documents/Github/weatheria/src/main/java/com/weatheria/weatheria/exception/ApiExceptionHandler.java
-/Users/rohan/Documents/Github/weatheria/src/main/java/com/weatheria/weatheria/model/CityInfo.java
-/Users/rohan/Documents/Github/weatheria/src/main/java/com/weatheria/weatheria/model/WeatherResponse.java
-/Users/rohan/Documents/Github/weatheria/src/main/java/com/weatheria/weatheria/service/WeatherService.java
