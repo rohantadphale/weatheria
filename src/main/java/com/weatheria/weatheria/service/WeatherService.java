@@ -99,28 +99,31 @@ public class WeatherService {
         }
     }
 
+    private static final Map<Integer, String> WEATHER_DESCRIPTIONS = new java.util.HashMap<>();
+
+    static {
+        WEATHER_DESCRIPTIONS.put(0, "Clear sky");
+        WEATHER_DESCRIPTIONS.put(1, "Mainly clear");
+        WEATHER_DESCRIPTIONS.put(2, "Partly cloudy");
+        WEATHER_DESCRIPTIONS.put(3, "Overcast");
+        WEATHER_DESCRIPTIONS.put(45, "Fog");
+        WEATHER_DESCRIPTIONS.put(48, "Depositing rime fog");
+        WEATHER_DESCRIPTIONS.put(51, "Drizzle: Light intensity");
+        WEATHER_DESCRIPTIONS.put(53, "Drizzle: Moderate intensity");
+        WEATHER_DESCRIPTIONS.put(55, "Drizzle: Dense intensity");
+        WEATHER_DESCRIPTIONS.put(61, "Rain: Slight intensity");
+        WEATHER_DESCRIPTIONS.put(63, "Rain: Moderate intensity");
+        WEATHER_DESCRIPTIONS.put(65, "Rain: Heavy intensity");
+        WEATHER_DESCRIPTIONS.put(71, "Snow fall: Slight intensity");
+        WEATHER_DESCRIPTIONS.put(73, "Snow fall: Moderate intensity");
+        WEATHER_DESCRIPTIONS.put(75, "Snow fall: Heavy intensity");
+        WEATHER_DESCRIPTIONS.put(80, "Rain showers: Slight intensity");
+        WEATHER_DESCRIPTIONS.put(81, "Rain showers: Moderate intensity");
+        WEATHER_DESCRIPTIONS.put(82, "Rain showers: Violent intensity");
+        WEATHER_DESCRIPTIONS.put(95, "Thunderstorm: Slight or moderate");
+    }
+
     public String weatherCodeToDescription(int weatherCode) {
-        return switch (weatherCode) {
-            case 0 -> "Clear sky";
-            case 1 -> "Mainly clear";
-            case 2 -> "Partly cloudy";
-            case 3 -> "Overcast";
-            case 45 -> "Fog";
-            case 48 -> "Depositing rime fog";
-            case 51 -> "Drizzle: Light intensity";
-            case 53 -> "Drizzle: Moderate intensity";
-            case 55 -> "Drizzle: Dense intensity";
-            case 61 -> "Rain: Slight intensity";
-            case 63 -> "Rain: Moderate intensity";
-            case 65 -> "Rain: Heavy intensity";
-            case 71 -> "Snow fall: Slight intensity";
-            case 73 -> "Snow fall: Moderate intensity";
-            case 75 -> "Snow fall: Heavy intensity";
-            case 80 -> "Rain showers: Slight intensity";
-            case 81 -> "Rain showers: Moderate intensity";
-            case 82 -> "Rain showers: Violent intensity";
-            case 95 -> "Thunderstorm: Slight or moderate";
-            default -> "Unknown weather code";
-        };
+        return WEATHER_DESCRIPTIONS.getOrDefault(weatherCode, "Unknown weather code");
     }
 }
