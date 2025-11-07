@@ -91,6 +91,21 @@ The following endpoints are available:
     }
     ```
 
+    **Weathercode Explanation:**
+
+    The `weathercode` field uses the WMO (World Meteorological Organization) Code Table 4677 to describe current weather conditions. You can find the complete table [here](https://www.nodc.noaa.gov/archive/arc0021/0002199/1.1/data/0-data/HTML/WMO-CODE/WMO4677.HTM).
+
+    Common weather codes include:
+
+    *   `0`: Clear sky
+    *   `1, 2, 3`: Mainly clear, partly cloudy, and overcast
+    *   `45, 48`: Fog and depositing rime fog
+    *   `51, 53, 55`: Drizzle: Light, moderate, and dense intensity
+    *   `61, 63, 65`: Rain: Light, moderate, and heavy intensity
+    *   `71, 73, 75`: Snow fall: Slight, moderate, and heavy intensity
+    *   `80, 81, 82`: Rain showers: Slight, moderate, and violent
+    *   `95`: Thunderstorm: Slight or moderate
+
     **Error Response (404 Not Found):**
 
     ```json
