@@ -87,11 +87,40 @@ public class WeatherService {
             Object time = currentWeather.get("time");
             if (temp instanceof Number) out.setTemperature(((Number) temp).doubleValue());
             if (wind instanceof Number) out.setWindspeed(((Number) wind).doubleValue());
-            if (code instanceof Number) out.setWeathercode(((Number) code).intValue());
+            if (code instanceof Number) {
+                int weatherCode = ((Number) code).intValue();
+                out.setWeathercode(weatherCode);
+                out.setWeatherDescription(weatherCodeToDescription(weatherCode));
+            }
             out.setTime(time != null ? time.toString() : null);
             return out;
         } catch (RestClientException e) {
             throw new RuntimeException("Forecast API call failed", e);
         }
+    }
+
+    public String weatherCodeToDescription(int weatherCode) {
+        return switch (weatherCode) {
+            case 0 -> "Clear sky";
+            case 1 -> "Mainly clear";
+            case 2 -> "Partly cloudy";
+            case 3 -> "Overcast";
+            case 45 -> "Fog";
+            case 48 -> "Depositing rime fog";
+            case 51 -> "Drizzle: Light intensity";
+            case 53 -> "Drizzle: Moderate intensity";
+            case 55 -> "Drizzle: Dense intensity";
+            case 61 -> "Rain: Slight intensity";
+            case 63 -> "Rain: Moderate intensity";
+            case 65 -> "Rain: Heavy intensity";
+            case 71 -> "Snow fall: Slight intensity";
+            case 73 -> "Snow fall: Moderate intensity";
+            case 75 -> "Snow fall: Heavy intensity";
+            case 80 -> "Rain showers: Slight intensity";
+            case 81 -> "Rain showers: Moderate intensity";
+            case 82 -> "Rain showers: Violent intensity";
+            case 95 -> "Thunderstorm: Slight or moderate";
+            default -> "Unknown weather code";
+        };
     }
 }
