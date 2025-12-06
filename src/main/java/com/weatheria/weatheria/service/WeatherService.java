@@ -3,7 +3,6 @@ package com.weatheria.weatheria.service;
 import com.weatheria.weatheria.model.CityInfo;
 import com.weatheria.weatheria.model.WeatherResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
@@ -25,7 +24,6 @@ public class WeatherService {
         this.restTemplate = restTemplate;
     }
 
-    @Cacheable(value="geocode", key="#city")
     public CityInfo geocodeCity(String city) {
         URI uri = UriComponentsBuilder.fromUriString(GEOCODING_URL)
                 .queryParam("name", city)
@@ -57,7 +55,6 @@ public class WeatherService {
         }
     }
 
-    @Cacheable(value="weather", key="#city")
     public WeatherResponse getWeatherForCity(String city) {
         CityInfo cityInfo = geocodeCity(city);
         if (cityInfo == null) return null;
