@@ -29,6 +29,11 @@ public class WeatherController {
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
+    @GetMapping("/ping")
+    public ResponseEntity<?> ping() {
+        return ResponseEntity.ok(Map.of("message", "pong"));
+    }
+
     @GetMapping("/weather")
     public ResponseEntity<?> getWeather(@RequestParam("city") String city) {
         try {
