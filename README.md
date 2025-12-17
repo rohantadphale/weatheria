@@ -144,7 +144,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Changelog
 
 ### v0.0.1 (2025-11-06)
-
 *   Initial release.
 
-
+### v0.0.1 (2025-12-16)
+*   UI elements added.
