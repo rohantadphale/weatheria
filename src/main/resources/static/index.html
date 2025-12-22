@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weatheria</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background: #0f172a;
+            /* Dark slate background */
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        #root {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .map-container {
+            height: 100%;
+            width: 100%;
+            z-index: 0;
+        }
+
+        /* Glassmorphism overlay for the search and weather card */
+        .overlay-container {
+            position: absolute;
+            top: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Material UI -->
+    <script crossorigin src="https://unpkg.com/@mui/material@5.15.0/umd/material-ui.development.js"></script>
+    <script crossorigin src="https://unpkg.com/@emotion/react@11.11.1/umd/emotion-react.umd.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@emotion/styled@11.11.0/umd/emotion-styled.umd.min.js"></script>
+
+    <!-- Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <script type="text/babel">
+        const {
+            createTheme,
+            ThemeProvider,
+            CssBaseline,
+            Container,
+            Paper,
+            TextField,
+            IconButton,
+            Typography,
+            Card,
+            CardContent,
+            Box,
+            CircularProgress,
+            InputAdornment
+        } = MaterialUI;
+
+        // Create a dark theme
+        const theme = createTheme({
+            palette: {
+                mode: 'dark',
+                primary: {
+                    main: '#38bdf8', // Sky blue
+                },
+                secondary: {
+                    main: '#818cf8', // Indigo
+                },
+                background: {
+                    paper: 'rgba(30, 41, 59, 0.7)', // Semi-transparent slate
+                    default: '#0f172a',
+                },
+            },
+            typography: {
+                fontFamily: 'Outfit, sans-serif',
+            },
+            components: {
+                MuiPaper: {
+                    styleOverrides: {
+                        root: {
+                            backdropFilter: 'blur(10px)',
+                            borderRadius: '16px',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                        },
+                    },
+                },
+            },
+        });
+
+        const WeatherIcon = ({ code }) => {
+            // Simple mapping for WMO weather codes to Material Icons
+            let iconName = 'help_outline';
+            if (code === 0) iconName = 'wb_sunny';
+            else if (code >= 1 && code <= 3) iconName = 'partly_cloudy_day';
+            else if (code >= 45 && code <= 48) iconName = 'foggy';
+            else if (code >= 51 && code <= 67) iconName = 'grain'; // Drizzle/Rain
+            else if (code >= 71 && code <= 77) iconName = 'ac_unit'; // Snow
+            else if (code >= 80 && code <= 82) iconName = 'umbrella'; // Showers
+            else if (code >= 95 && code <= 99) iconName = 'thunderstorm';
+
+            return <span className="material-icons" style={{ fontSize: '48px', color: '#38bdf8' }}>{iconName}</span>;
+        };
+
+        const MapComponent = ({ lat, lng, zoom }) => {
+            const mapRef = React.useRef(null);
+            const markerRef = React.useRef(null);
+
+            React.useEffect(() => {
+                if (!mapRef.current) {
+                    mapRef.current = L.map('map', { zoomControl: false }).setView([lat, lng], zoom);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(mapRef.current);
+                    L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current);
+                } else {
+                    mapRef.current.setView([lat, lng], zoom);
+                }
+
+                if (markerRef.current) {
+                    markerRef.current.remove();
+                }
+                markerRef.current = L.marker([lat, lng]).addTo(mapRef.current);
+
+                return () => {
+                    // Cleanup if needed, but usually we want to keep the map instance
+                };
+            }, [lat, lng, zoom]);
+
+            return <div id="map" className="map-container"></div>;
+        };
+
+        const NavBar = () => {
+            return (
+                <Box sx={{
+                    position: 'absolute',
+                    top: 20,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 1100,
+                    width: 'auto',
+                    maxWidth: '90%',
+                }}>
+                    <Paper elevation={4} sx={{
+                        borderRadius: '50px',
+                        backdropFilter: 'blur(12px)',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        padding: '8px 24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4
+                    }}>
+                        <Typography variant="h6" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 'bold', color: '#38bdf8', letterSpacing: '-0.5px' }}>
+                            <span className="material-icons" style={{ fontSize: '28px' }}>filter_drama</span> Weatheria
+                        </Typography>
+                        <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
+                            <MaterialUI.Button color="inherit" sx={{ borderRadius: '20px', px: 2, '&:hover': { background: 'rgba(255,255,255,0.05)' } }}>Home</MaterialUI.Button>
+                            <MaterialUI.Button color="inherit" sx={{ borderRadius: '20px', px: 2, '&:hover': { background: 'rgba(255,255,255,0.05)' } }}>Map</MaterialUI.Button>
+                            <MaterialUI.Button color="inherit" sx={{ borderRadius: '20px', px: 2, '&:hover': { background: 'rgba(255,255,255,0.05)' } }}>API</MaterialUI.Button>
+                        </Box>
+                        <MaterialUI.Button variant="contained" color="primary" size="small" sx={{ borderRadius: '20px', textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 14px 0 rgba(56, 189, 248, 0.5)', px: 3 }}>
+                            Get Started
+                        </MaterialUI.Button>
+                    </Paper>
+                </Box>
+            );
+        };
+
+        const App = () => {
+            const [city, setCity] = React.useState('');
+            const [weather, setWeather] = React.useState(null);
+            const [loading, setLoading] = React.useState(false);
+            const [error, setError] = React.useState(null);
+            const [mapCoords, setMapCoords] = React.useState({ lat: 20, lng: 0, zoom: 2 }); // Default world view
+
+            const handleSearch = async (e) => {
+                e.preventDefault();
+                if (!city.trim()) return;
+
+                setLoading(true);
+                setError(null);
+                setWeather(null);
+
+                try {
+                    // Check if running via file protocol
+                    if (window.location.protocol === 'file:') {
+                        throw new Error('Please run this application via the Spring Boot server (http://localhost:8080), not by opening the file directly.');
+                    }
+
+                    const response = await axios.get(`/api/weather?city=${encodeURIComponent(city)}`);
+                    const data = response.data;
+                    setWeather(data);
+                    setMapCoords({ lat: data.latitude, lng: data.longitude, zoom: 12 });
+                } catch (err) {
+                    console.error(err);
+                    let errorMessage = 'Failed to fetch weather data';
+                    if (err.response?.data?.error) {
+                        errorMessage = err.response.data.error;
+                    } else if (err.message) {
+                        errorMessage = err.message;
+                    }
+                    setError(errorMessage);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <ThemeProvider theme={theme}>
+                    <CssBaseline />
+                    <NavBar />
+
+                    <MapComponent lat={mapCoords.lat} lng={mapCoords.lng} zoom={mapCoords.zoom} />
+
+                    <div className="overlay-container">
+                        <Paper elevation={3} sx={{ p: 2 }}>
+                            <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center' }}>
+                                <TextField
+                                    fullWidth
+                                    variant="outlined"
+                                    placeholder="Enter city name..."
+                                    value={city}
+                                    onChange={(e) => setCity(e.target.value)}
+                                    size="small"
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <span className="material-icons">search</span>
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                                <IconButton type="submit" color="primary" sx={{ ml: 1 }} disabled={loading}>
+                                    {loading ? <CircularProgress size={24} /> : <span className="material-icons">arrow_forward</span>}
+                                </IconButton>
+                            </form>
+                        </Paper>
+
+                        {error && (
+                            <Paper elevation={3} sx={{ p: 2, bgcolor: 'error.dark', color: 'white' }}>
+                                <Typography variant="body1" display="flex" alignItems="center" gap={1}>
+                                    <span className="material-icons">error_outline</span>
+                                    {error}
+                                </Typography>
+                            </Paper>
+                        )}
+
+                        {weather && (
+                            <Card sx={{ backdropFilter: 'blur(10px)', background: 'rgba(30, 41, 59, 0.85)' }}>
+                                <CardContent>
+                                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                                        <Typography variant="h4" component="div" fontWeight="bold">
+                                            {weather.city}
+                                        </Typography>
+                                        <WeatherIcon code={weather.weathercode} />
+                                    </Box>
+
+                                    <Typography variant="h2" component="div" color="primary" fontWeight="300">
+                                        {weather.temperature}°C
+                                    </Typography>
+
+                                    <Typography variant="h6" color="text.secondary" gutterBottom sx={{ textTransform: 'capitalize' }}>
+                                        {weather.weatherDescription}
+                                    </Typography>
+
+                                    <Box display="flex" gap={3} mt={2}>
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            <span className="material-icons" style={{ color: '#818cf8' }}>air</span>
+                                            <Typography variant="body1">
+                                                {weather.windspeed} km/h
+                                            </Typography>
+                                        </Box>
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            <span className="material-icons" style={{ color: '#818cf8' }}>schedule</span>
+                                            <Typography variant="body1">
+                                                {new Date(weather.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                </ThemeProvider>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
