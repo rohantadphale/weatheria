@@ -3,7 +3,10 @@ package com.weatheria.weatheria.service;
 import com.weatheria.weatheria.model.CityInfo;
 import com.weatheria.weatheria.model.WeatherResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -31,21 +34,32 @@ public class WeatherService {
                 .toUri();
 
         try {
-            ResponseEntity<Map> resp = restTemplate.getForEntity(uri, Map.class);
-            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
+            RequestEntity<Void> request = RequestEntity.get(uri).build();
+            ResponseEntity<Map<String, Object>> resp = restTemplate.exchange(
+                    request,
+                    new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
+            Map<String, Object> body = resp.getBody();
+            if (!resp.getStatusCode().is2xxSuccessful() || body == null) {
                 return null;
             }
-            Map body = resp.getBody();
             Object resultsObj = body.get("results");
-            if (resultsObj instanceof java.util.List && !((java.util.List) resultsObj).isEmpty()) {
-                Map first = (Map) ((java.util.List) resultsObj).get(0);
+            if (resultsObj instanceof java.util.List<?> list && !list.isEmpty()) {
+                Object firstObj = list.get(0);
+                if (!(firstObj instanceof Map<?, ?> first)) {
+                    return null;
+                }
                 CityInfo info = new CityInfo();
-                info.setName((String) first.getOrDefault("name", city));
-                info.setCountry((String) first.getOrDefault("country", ""));
-                Object lat = first.get("latitude");
-                Object lon = first.get("longitude");
-                if (lat instanceof Number) info.setLatitude(((Number) lat).doubleValue());
-                if (lon instanceof Number) info.setLongitude(((Number) lon).doubleValue());
+                String name = getString(first, "name");
+                info.setName(name != null ? name : city);
+                String country = getString(first, "country");
+                info.setCountry(country != null ? country : "");
+                Double lat = getDouble(first, "latitude");
+                Double lon = getDouble(first, "longitude");
+                if (lat != null)
+                    info.setLatitude(lat);
+                if (lon != null)
+                    info.setLongitude(lon);
                 return info;
             } else {
                 return null;
@@ -55,9 +69,15 @@ public class WeatherService {
         }
     }
 
+    @Cacheable(
+            cacheNames = "weather",
+            key = "T(com.weatheria.weatheria.service.WeatherService).cityKey(#city)",
+            unless = "#result == null"
+    )
     public WeatherResponse getWeatherForCity(String city) {
         CityInfo cityInfo = geocodeCity(city);
-        if (cityInfo == null) return null;
+        if (cityInfo == null)
+            return null;
 
         URI uri = UriComponentsBuilder.fromUriString(FORECAST_URL)
                 .queryParam("latitude", cityInfo.getLatitude())
@@ -67,28 +87,33 @@ public class WeatherService {
                 .toUri();
 
         try {
-            ResponseEntity<Map> resp = restTemplate.getForEntity(uri, Map.class);
-            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
+            RequestEntity<Void> request = RequestEntity.get(uri).build();
+            ResponseEntity<Map<String, Object>> resp = restTemplate.exchange(
+                    request,
+                    new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
+            Map<String, Object> body = resp.getBody();
+            if (!resp.getStatusCode().is2xxSuccessful() || body == null) {
                 throw new RuntimeException("Weather API returned non-200");
             }
-            Map body = resp.getBody();
             Object cw = body.get("current_weather");
-            if (!(cw instanceof Map)) {
+            if (!(cw instanceof Map<?, ?> currentWeather)) {
                 throw new RuntimeException("No current_weather in response");
             }
-            Map currentWeather = (Map) cw;
             WeatherResponse out = new WeatherResponse();
             out.setCity(cityInfo.getName());
             out.setLatitude(cityInfo.getLatitude());
             out.setLongitude(cityInfo.getLongitude());
-            Object temp = currentWeather.get("temperature");
-            Object wind = currentWeather.get("windspeed");
-            Object code = currentWeather.get("weathercode");
+            Double temp = getDouble(currentWeather, "temperature");
+            Double wind = getDouble(currentWeather, "windspeed");
+            Integer code = getInt(currentWeather, "weathercode");
             Object time = currentWeather.get("time");
-            if (temp instanceof Number) out.setTemperature(((Number) temp).doubleValue());
-            if (wind instanceof Number) out.setWindspeed(((Number) wind).doubleValue());
-            if (code instanceof Number) {
-                int weatherCode = ((Number) code).intValue();
+            if (temp != null)
+                out.setTemperature(temp);
+            if (wind != null)
+                out.setWindspeed(wind);
+            if (code != null) {
+                int weatherCode = code;
                 out.setWeathercode(weatherCode);
                 out.setWeatherDescription(weatherCodeToDescription(weatherCode));
             }
@@ -121,6 +146,27 @@ public class WeatherService {
         WEATHER_DESCRIPTIONS.put(81, "Rain showers: Moderate intensity");
         WEATHER_DESCRIPTIONS.put(82, "Rain showers: Violent intensity");
         WEATHER_DESCRIPTIONS.put(95, "Thunderstorm: Slight or moderate");
+    }
+
+    public static String cityKey(String city) {
+        if (city == null)
+            return "";
+        return city.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private static String getString(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        return value instanceof String ? (String) value : null;
+    }
+
+    private static Double getDouble(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        return value instanceof Number ? ((Number) value).doubleValue() : null;
+    }
+
+    private static Integer getInt(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        return value instanceof Number ? ((Number) value).intValue() : null;
     }
 
     public String weatherCodeToDescription(int weatherCode) {
