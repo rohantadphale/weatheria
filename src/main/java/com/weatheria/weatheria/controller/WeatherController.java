@@ -76,6 +76,7 @@ public class WeatherController {
         }
     }
 
+
     @PostMapping("/metrics/map-rendered")
     public ResponseEntity<?> mapRendered(@RequestBody Map<String, Object> payload) {
         String city = payload.get("city") instanceof String value
