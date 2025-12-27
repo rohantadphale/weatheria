@@ -72,9 +72,7 @@ public class WeatherController {
                 elapsedTimeUtil.calculateElapsedTime(startNanos),
                 e.getMessage()
             );
-            return ResponseEntity.status(502).body(
-                Map.of("error", e.getMessage())
-            );
+            return ResponseEntity.status(502).body(Map.of("error", e.getMessage()));
         }
     }
 
