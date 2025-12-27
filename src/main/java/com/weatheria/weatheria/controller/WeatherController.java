@@ -1,10 +1,7 @@
 package com.weatheria.weatheria.controller;
 
-import com.weatheria.weatheria.model.WeatherResponse;
-import com.weatheria.weatheria.service.WeatherService;
-import com.weatheria.weatheria.util.ElapsedTimeUtil;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,17 +13,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.weatheria.weatheria.model.WeatherResponse;
+import com.weatheria.weatheria.service.WeatherService;
+import com.weatheria.weatheria.util.ElapsedTimeUtil;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api")
-@Tag(
-    name = "Weather API",
-    description = "Endpoints for weather and health checks"
-)
+@Tag(name = "Weather API", description = "Endpoints for weather and health checks")
 public class WeatherController {
 
-    private static final Logger logger = LoggerFactory.getLogger(
-        WeatherController.class
-    );
+    private static final Logger logger = LoggerFactory.getLogger(WeatherController.class);
     private final ElapsedTimeUtil elapsedTimeUtil = new ElapsedTimeUtil();
     private final WeatherService weatherService;
 
@@ -81,9 +79,7 @@ public class WeatherController {
     }
 
     @PostMapping("/metrics/map-rendered")
-    public ResponseEntity<?> mapRendered(
-        @RequestBody Map<String, Object> payload
-    ) {
+    public ResponseEntity<?> mapRendered(@RequestBody Map<String, Object> payload) {
         String city = payload.get("city") instanceof String value
             ? value.trim()
             : "unknown";

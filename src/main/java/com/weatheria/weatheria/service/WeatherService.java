@@ -1,10 +1,8 @@
 package com.weatheria.weatheria.service;
 
-import com.weatheria.weatheria.model.CityInfo;
-import com.weatheria.weatheria.model.WeatherResponse;
-import com.weatheria.weatheria.util.ElapsedTimeUtil;
 import java.net.URI;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,18 +15,18 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.weatheria.weatheria.model.CityInfo;
+import com.weatheria.weatheria.model.WeatherResponse;
+import com.weatheria.weatheria.util.ElapsedTimeUtil;
+
 @Service
 public class WeatherService {
 
-    private static final Logger logger = LoggerFactory.getLogger(
-        WeatherService.class
-    );
+    private static final Logger logger = LoggerFactory.getLogger(WeatherService.class);
     private final ElapsedTimeUtil elapsedTimeUtil = new ElapsedTimeUtil();
     private final RestTemplate restTemplate;
-    private static final String GEOCODING_URL =
-        "https://geocoding-api.open-meteo.com/v1/search";
-    private static final String FORECAST_URL =
-        "https://api.open-meteo.com/v1/forecast";
+    private static final String GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
+    private static final String FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
     @Autowired
     public WeatherService(RestTemplate restTemplate) {
@@ -53,9 +51,7 @@ public class WeatherService {
                 return null;
             }
             Object resultsObj = body.get("results");
-            if (
-                resultsObj instanceof java.util.List<?> list && !list.isEmpty()
-            ) {
+            if (resultsObj instanceof java.util.List<?> list && !list.isEmpty()) {
                 Object firstObj = list.get(0);
                 if (!(firstObj instanceof Map<?, ?> first)) {
                     return null;
@@ -76,13 +72,10 @@ public class WeatherService {
                 );
                 return info;
             } else {
-                long elapsedMs = elapsedTimeUtil.calculateElapsedTime(
-                    startNanos
-                );
                 logger.info(
                     "Geocoding completed for city={} status=not_found elapsedMs={}",
                     city,
-                    elapsedMs
+                    elapsedTimeUtil.calculateElapsedTime(startNanos)
                 );
                 return null;
             }
@@ -153,11 +146,10 @@ public class WeatherService {
             );
             return out;
         } catch (RestClientException e) {
-            long elapsedMs = elapsedTimeUtil.calculateElapsedTime(startNanos);
             logger.warn(
                 "Weather lookup failed for city={} elapsedMs={} error={}",
                 city,
-                elapsedMs,
+                elapsedTimeUtil.calculateElapsedTime(startNanos),
                 e.getMessage()
             );
             throw new RuntimeException("Forecast API call failed", e);
