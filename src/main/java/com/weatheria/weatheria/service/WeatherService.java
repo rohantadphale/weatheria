@@ -17,6 +17,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.weatheria.weatheria.model.CityInfo;
 import com.weatheria.weatheria.model.WeatherResponse;
+import com.weatheria.weatheria.util.CityInputValidator;
 import com.weatheria.weatheria.util.ElapsedTimeUtil;
 
 @Service
@@ -35,8 +36,9 @@ public class WeatherService {
 
     public CityInfo geocodeCity(String city) {
         long startNanos = System.nanoTime();
+        String normalizedCity = CityInputValidator.normalize(city);
         URI uri = UriComponentsBuilder.fromUriString(GEOCODING_URL)
-            .queryParam("name", city)
+            .queryParam("name", normalizedCity)
             .build()
             .toUri();
 
@@ -58,7 +60,7 @@ public class WeatherService {
                 }
                 CityInfo info = new CityInfo();
                 String name = getString(first, "name");
-                info.setName(name != null ? name : city);
+                info.setName(name != null ? name : normalizedCity);
                 String country = getString(first, "country");
                 info.setCountry(country != null ? country : "");
                 Double lat = getDouble(first, "latitude");
@@ -74,7 +76,7 @@ public class WeatherService {
             } else {
                 logger.info(
                     "Geocoding completed for city={} status=not_found elapsedMs={}",
-                    city,
+                    normalizedCity,
                     elapsedTimeUtil.calculateElapsedTime(startNanos)
                 );
                 return null;
@@ -82,7 +84,7 @@ public class WeatherService {
         } catch (RestClientException e) {
             logger.warn(
                 "Geocoding failed for city={} elapsedMs={} error={}",
-                city,
+                normalizedCity,
                 elapsedTimeUtil.calculateElapsedTime(startNanos),
                 e.getMessage()
             );

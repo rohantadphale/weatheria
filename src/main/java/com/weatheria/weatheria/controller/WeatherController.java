@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.weatheria.weatheria.model.WeatherResponse;
 import com.weatheria.weatheria.service.WeatherService;
+import com.weatheria.weatheria.util.CityInputValidator;
 import com.weatheria.weatheria.util.ElapsedTimeUtil;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,14 +47,28 @@ public class WeatherController {
     @GetMapping("/weather")
     public ResponseEntity<?> getWeather(@RequestParam("city") String city) {
         long startNanos = System.nanoTime();
-        String trimmedCity = city == null ? "" : city.trim();
-        logger.info("Weather request received for city={}", trimmedCity);
+        String normalizedCity;
         try {
-            WeatherResponse resp = weatherService.getWeatherForCity(city);
+            normalizedCity = CityInputValidator.normalize(city);
+        } catch (IllegalArgumentException ex) {
+            logger.warn(
+                "Rejected weather request city={} reason={}",
+                city,
+                ex.getMessage()
+            );
+            return ResponseEntity.badRequest().body(
+                Map.of("error", "Invalid city parameter")
+            );
+        }
+        logger.info("Weather request received for city={}", normalizedCity);
+        try {
+            WeatherResponse resp = weatherService.getWeatherForCity(
+                normalizedCity
+            );
             if (resp == null) {
                 logger.info(
                     "Weather request completed for city={} status=not_found",
-                    trimmedCity
+                    normalizedCity
                 );
                 return ResponseEntity.status(404).body(
                     Map.of("error", "City not found")
@@ -61,14 +76,14 @@ public class WeatherController {
             }
             logger.info(
                 "Weather request completed for city={} status=ok elapsedMs={}",
-                trimmedCity,
+                normalizedCity,
                 elapsedTimeUtil.calculateElapsedTime(startNanos)
             );
             return ResponseEntity.ok(resp);
         } catch (RuntimeException e) {
             logger.warn(
                 "Weather request failed for city={} elapsedMs={} error={}",
-                trimmedCity,
+                normalizedCity,
                 elapsedTimeUtil.calculateElapsedTime(startNanos),
                 e.getMessage()
             );
@@ -76,9 +91,10 @@ public class WeatherController {
         }
     }
 
-
     @PostMapping("/metrics/map-rendered")
-    public ResponseEntity<?> mapRendered(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> mapRendered(
+        @RequestBody Map<String, Object> payload
+    ) {
         String city = payload.get("city") instanceof String value
             ? value.trim()
             : "unknown";
