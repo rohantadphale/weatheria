@@ -5,7 +5,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.RequestEntity;
@@ -29,7 +28,6 @@ public class WeatherService {
     private static final String GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
     private static final String FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
-    @Autowired
     public WeatherService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
@@ -160,21 +158,13 @@ public class WeatherService {
 
     public void logMapRenderLatency(String city, long durationMs) {
         if (durationMs < 0) {
-            logger.info(
-                "Map render latency reported for city={} durationMs=unknown",
-                city
-            );
+            logger.info("Map render latency reported for city={} durationMs=unknown", city);
             return;
         }
-        logger.info(
-            "Map render latency reported for city={} durationMs={}",
-            city,
-            durationMs
-        );
+        logger.info("Map render latency reported for city={} durationMs={}", city, durationMs);
     }
 
-    private static final Map<Integer, String> WEATHER_DESCRIPTIONS =
-        new java.util.HashMap<>();
+    private static final Map<Integer, String> WEATHER_DESCRIPTIONS = new java.util.HashMap<>();
 
     static {
         WEATHER_DESCRIPTIONS.put(0, "Clear sky");
@@ -219,9 +209,6 @@ public class WeatherService {
     }
 
     public String weatherCodeToDescription(int weatherCode) {
-        return WEATHER_DESCRIPTIONS.getOrDefault(
-            weatherCode,
-            "Unknown weather code"
-        );
+        return WEATHER_DESCRIPTIONS.getOrDefault(weatherCode, "Unknown weather code");
     }
 }
