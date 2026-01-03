@@ -433,6 +433,7 @@
                             <Paper elevation={3} sx={{ p: 2 }}>
                                 <form
                                     onSubmit={handleSearch}
+                                    autoComplete="off"
                                     style={{
                                         display: "flex",
                                         alignItems: "center",
@@ -442,6 +443,7 @@
                                         fullWidth
                                         variant="outlined"
                                         placeholder="Enter city name..."
+                                        inputProps={{ "aria-label": "Search city" }}
                                         value={city}
                                         onChange={(e) =>
                                             setCity(e.target.value)
@@ -450,7 +452,7 @@
                                         InputProps={{
                                             startAdornment: (
                                                 <InputAdornment position="start">
-                                                    <span className="material-icons">
+                                                    <span className="material-icons" aria-hidden="true">
                                                         search
                                                     </span>
                                                 </InputAdornment>
@@ -460,6 +462,7 @@
                                     <IconButton
                                         type="submit"
                                         color="primary"
+                                        aria-label="Search"
                                         sx={{ ml: 1 }}
                                         disabled={loading}
                                     >
