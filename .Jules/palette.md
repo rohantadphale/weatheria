@@ -1,3 +1,3 @@
-## 2026-01-03 - Accessible Labels in Embedded React
-**Learning:** In "embedded" React apps (no build step, using Babel standalone), accessibility props like `aria-label` are easily missed because there's no ESLint plugin-jsx-a11y running.
-**Action:** Always manually check inputs and buttons for accessible labels when working in legacy or simple no-build environments. Use `inputProps` for `TextField` in MUI to pass aria attributes to the underlying input.
+## 2026-01-03 - Modern Map Tiles
+**Learning:** Default OpenStreetMap tiles can look dated and cluttered for modern web applications. Switching to designed tile providers like CartoDB Voyager instantly elevates the visual quality and readability of the map, aligning it better with modern UI design languages (like Glassmorphism).
+**Action:** When integrating maps, always explore alternative tile providers (CartoDB, Mapbox, Esri) instead of defaulting to standard OSM, especially for dark-themed or polished interfaces.
