@@ -1,19 +1,21 @@
 package com.weatheria.weatheria.service;
 
-import com.weatheria.weatheria.model.CityInfo;
-import com.weatheria.weatheria.model.WeatherResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.net.URI;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
-import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.net.URI;
-import java.util.Map;
+import com.weatheria.weatheria.model.CityInfo;
+import com.weatheria.weatheria.model.WeatherResponse;
 
 @Service
 public class WeatherService {
@@ -22,29 +24,30 @@ public class WeatherService {
     private static final String GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
     private static final String FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
-    @Autowired
     public WeatherService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
     public CityInfo geocodeCity(String city) {
         URI uri = UriComponentsBuilder.fromUriString(GEOCODING_URL)
-                .queryParam("name", city)
-                .build()
-                .toUri();
+            .queryParam("name", city)
+            .build()
+            .toUri();
 
         try {
             RequestEntity<Void> request = RequestEntity.get(uri).build();
             ResponseEntity<Map<String, Object>> resp = restTemplate.exchange(
-                    request,
-                    new ParameterizedTypeReference<Map<String, Object>>() {
-                    });
+                request,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
             Map<String, Object> body = resp.getBody();
             if (!resp.getStatusCode().is2xxSuccessful() || body == null) {
                 return null;
             }
             Object resultsObj = body.get("results");
-            if (resultsObj instanceof java.util.List<?> list && !list.isEmpty()) {
+            if (
+                resultsObj instanceof java.util.List<?> list && !list.isEmpty()
+            ) {
                 Object firstObj = list.get(0);
                 if (!(firstObj instanceof Map<?, ?> first)) {
                     return null;
@@ -56,10 +59,8 @@ public class WeatherService {
                 info.setCountry(country != null ? country : "");
                 Double lat = getDouble(first, "latitude");
                 Double lon = getDouble(first, "longitude");
-                if (lat != null)
-                    info.setLatitude(lat);
-                if (lon != null)
-                    info.setLongitude(lon);
+                if (lat != null) info.setLatitude(lat);
+                if (lon != null) info.setLongitude(lon);
                 return info;
             } else {
                 return null;
@@ -70,28 +71,27 @@ public class WeatherService {
     }
 
     @Cacheable(
-            cacheNames = "weather",
-            key = "T(com.weatheria.weatheria.service.WeatherService).cityKey(#city)",
-            unless = "#result == null"
+        cacheNames = "weather",
+        key = "T(com.weatheria.weatheria.service.WeatherService).cityKey(#city)",
+        unless = "#result == null"
     )
     public WeatherResponse getWeatherForCity(String city) {
         CityInfo cityInfo = geocodeCity(city);
-        if (cityInfo == null)
-            return null;
+        if (cityInfo == null) return null;
 
         URI uri = UriComponentsBuilder.fromUriString(FORECAST_URL)
-                .queryParam("latitude", cityInfo.getLatitude())
-                .queryParam("longitude", cityInfo.getLongitude())
-                .queryParam("current_weather", "true")
-                .build()
-                .toUri();
+            .queryParam("latitude", cityInfo.getLatitude())
+            .queryParam("longitude", cityInfo.getLongitude())
+            .queryParam("current_weather", "true")
+            .build()
+            .toUri();
 
         try {
             RequestEntity<Void> request = RequestEntity.get(uri).build();
             ResponseEntity<Map<String, Object>> resp = restTemplate.exchange(
-                    request,
-                    new ParameterizedTypeReference<Map<String, Object>>() {
-                    });
+                request,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
             Map<String, Object> body = resp.getBody();
             if (!resp.getStatusCode().is2xxSuccessful() || body == null) {
                 throw new RuntimeException("Weather API returned non-200");
@@ -108,20 +108,25 @@ public class WeatherService {
             Double wind = getDouble(currentWeather, "windspeed");
             Integer code = getInt(currentWeather, "weathercode");
             Object time = currentWeather.get("time");
-            if (temp != null)
-                out.setTemperature(temp);
-            if (wind != null)
-                out.setWindspeed(wind);
+            if (temp != null) out.setTemperature(temp);
+            if (wind != null) out.setWindspeed(wind);
             if (code != null) {
                 int weatherCode = code;
                 out.setWeathercode(weatherCode);
-                out.setWeatherDescription(weatherCodeToDescription(weatherCode));
+                out.setWeatherDescription(
+                    weatherCodeToDescription(weatherCode)
+                );
             }
             out.setTime(time != null ? time.toString() : null);
             return out;
         } catch (RestClientException e) {
             throw new RuntimeException("Forecast API call failed", e);
         }
+    }
+
+    @Async("weatherTaskExecutor")
+    public CompletableFuture<WeatherResponse> getWeatherForCityAsync(String city) {
+        return CompletableFuture.completedFuture(getWeatherForCity(city));
     }
 
     private static final Map<Integer, String> WEATHER_DESCRIPTIONS = new java.util.HashMap<>();
@@ -149,8 +154,7 @@ public class WeatherService {
     }
 
     public static String cityKey(String city) {
-        if (city == null)
-            return "";
+        if (city == null) return "";
         return city.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
@@ -170,6 +174,6 @@ public class WeatherService {
     }
 
     public String weatherCodeToDescription(int weatherCode) {
-        return WEATHER_DESCRIPTIONS.getOrDefault(weatherCode, "Unknown weather code");
+        return WEATHER_DESCRIPTIONS.getOrDefault(weatherCode,"Unknown weather code");
     }
 }
