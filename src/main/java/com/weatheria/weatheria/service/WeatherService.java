@@ -4,6 +4,9 @@ import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.RequestEntity;
@@ -16,10 +19,14 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.weatheria.weatheria.model.CityInfo;
 import com.weatheria.weatheria.model.WeatherResponse;
+import com.weatheria.weatheria.util.CityInputValidator;
+import com.weatheria.weatheria.util.ElapsedTimeUtil;
 
 @Service
 public class WeatherService {
 
+    private static final Logger logger = LoggerFactory.getLogger(WeatherService.class);
+    private final ElapsedTimeUtil elapsedTimeUtil = new ElapsedTimeUtil();
     private final RestTemplate restTemplate;
     private static final String GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
     private static final String FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -29,6 +36,8 @@ public class WeatherService {
     }
 
     public CityInfo geocodeCity(String city) {
+        long startNanos = System.nanoTime();
+        String normalizedCity = CityInputValidator.normalize(city);
         URI uri = UriComponentsBuilder.fromUriString(GEOCODING_URL)
             .queryParam("name", city)
             .build()
@@ -54,18 +63,34 @@ public class WeatherService {
                 }
                 CityInfo info = new CityInfo();
                 String name = getString(first, "name");
-                info.setName(name != null ? name : city);
+                info.setName(name != null ? name : normalizedCity);
                 String country = getString(first, "country");
                 info.setCountry(country != null ? country : "");
                 Double lat = getDouble(first, "latitude");
                 Double lon = getDouble(first, "longitude");
                 if (lat != null) info.setLatitude(lat);
                 if (lon != null) info.setLongitude(lon);
+                logger.info(
+                    "Geocoding completed for city={} elapsedMs={}",
+                    info.getName(),
+                    elapsedTimeUtil.calculateElapsedTime(startNanos)
+                );
                 return info;
             } else {
+                logger.info(
+                    "Geocoding completed for city={} status=not_found elapsedMs={}",
+                    normalizedCity,
+                    elapsedTimeUtil.calculateElapsedTime(startNanos)
+                );
                 return null;
             }
         } catch (RestClientException e) {
+            logger.warn(
+                "Geocoding failed for city={} elapsedMs={} error={}",
+                normalizedCity,
+                elapsedTimeUtil.calculateElapsedTime(startNanos),
+                e.getMessage()
+            );
             throw new RuntimeException("Geocoding API call failed", e);
         }
     }
@@ -76,6 +101,7 @@ public class WeatherService {
         unless = "#result == null"
     )
     public WeatherResponse getWeatherForCity(String city) {
+        long startNanos = System.nanoTime();
         CityInfo cityInfo = geocodeCity(city);
         if (cityInfo == null) return null;
 
@@ -118,8 +144,19 @@ public class WeatherService {
                 );
             }
             out.setTime(time != null ? time.toString() : null);
+            logger.info(
+                "Weather lookup completed for city={} elapsedMs={}",
+                cityInfo.getName(),
+                elapsedTimeUtil.calculateElapsedTime(startNanos)
+            );
             return out;
         } catch (RestClientException e) {
+            logger.warn(
+                "Weather lookup failed for city={} elapsedMs={} error={}",
+                city,
+                elapsedTimeUtil.calculateElapsedTime(startNanos),
+                e.getMessage()
+            );
             throw new RuntimeException("Forecast API call failed", e);
         }
     }
@@ -127,6 +164,12 @@ public class WeatherService {
     @Async("weatherTaskExecutor")
     public CompletableFuture<WeatherResponse> getWeatherForCityAsync(String city) {
         return CompletableFuture.completedFuture(getWeatherForCity(city));
+    public void logMapRenderLatency(String city, long durationMs) {
+        if (durationMs < 0) {
+            logger.info("Map render latency reported for city={} durationMs=unknown", city);
+            return;
+        }
+        logger.info("Map render latency reported for city={} durationMs={}", city, durationMs);
     }
 
     private static final Map<Integer, String> WEATHER_DESCRIPTIONS = new java.util.HashMap<>();
