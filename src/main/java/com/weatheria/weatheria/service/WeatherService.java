@@ -2,16 +2,13 @@ package com.weatheria.weatheria.service;
 
 import java.net.URI;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -95,12 +92,7 @@ public class WeatherService {
         }
     }
 
-    @Cacheable(
-        cacheNames = "weather",
-        key = "T(com.weatheria.weatheria.service.WeatherService).cityKey(#city)",
-        unless = "#result == null"
-    )
-    public WeatherResponse getWeatherForCity(String city) {
+    public WeatherResponse getWeatherForCityInternal(String city) {
         long startNanos = System.nanoTime();
         CityInfo cityInfo = geocodeCity(city);
         if (cityInfo == null) return null;
@@ -161,9 +153,6 @@ public class WeatherService {
         }
     }
 
-    @Async("weatherTaskExecutor")
-    public CompletableFuture<WeatherResponse> getWeatherForCityAsync(String city) {
-        return CompletableFuture.completedFuture(getWeatherForCity(city));
     public void logMapRenderLatency(String city, long durationMs) {
         if (durationMs < 0) {
             logger.info("Map render latency reported for city={} durationMs=unknown", city);

@@ -3,7 +3,6 @@ package com.weatheria.weatheria.controller;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.weatheria.weatheria.model.WeatherResponse;
+import com.weatheria.weatheria.service.WeatherAsyncService;
 import com.weatheria.weatheria.service.WeatherService;
 import com.weatheria.weatheria.util.CityInputValidator;
 import com.weatheria.weatheria.util.ElapsedTimeUtil;
@@ -28,10 +27,12 @@ public class WeatherController {
 
     private static final Logger logger = LoggerFactory.getLogger(WeatherController.class);
     private final ElapsedTimeUtil elapsedTimeUtil = new ElapsedTimeUtil();
+    private final WeatherAsyncService weatherAsyncService;
     private final WeatherService weatherService;
 
-    public WeatherController(WeatherService service) {
-        this.weatherService = service;
+    public WeatherController(WeatherAsyncService weatherAsyncService, WeatherService weatherService) {
+        this.weatherAsyncService = weatherAsyncService;
+        this.weatherService = weatherService;
     }
 
     @GetMapping("/health")
@@ -46,18 +47,42 @@ public class WeatherController {
 
     @GetMapping("/weather")
     public CompletableFuture<ResponseEntity<?>> getWeather(@RequestParam("city") String city) {
-        return weatherService
-            .getWeatherForCityAsync(city)
+        long startNanos = System.nanoTime();
+        final String normalizedCity;
+        try {
+            normalizedCity = CityInputValidator.normalize(city);
+        } catch (IllegalArgumentException ex) {
+            logger.warn("Rejected weather request city={} reason={}", city, ex.getMessage());
+            return CompletableFuture.completedFuture(
+                ResponseEntity.badRequest().body(
+                    Map.of("error", "Invalid city parameter")
+                )
+            );
+        }
+        logger.info("Weather request received for city={}", normalizedCity);
+        return weatherAsyncService
+            .getWeatherForCityAsync(normalizedCity)
             .thenApply(resp -> {
                 if (resp == null) {
+                    logger.info("Weather request completed for city={} status=not_found", normalizedCity);
                     return ResponseEntity.status(404).body(
                         Map.of("error", "City not found")
                     );
                 }
+                logger.info("Weather request completed for city={} status=ok elapsedMs={}",
+                    normalizedCity,
+                    elapsedTimeUtil.calculateElapsedTime(startNanos)
+                );
                 return ResponseEntity.ok(resp);
             })
             .exceptionally(ex -> {
                 Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                logger.warn(
+                    "Weather request failed for city={} elapsedMs={} error={}",
+                    normalizedCity,
+                    elapsedTimeUtil.calculateElapsedTime(startNanos),
+                    cause.getMessage()
+                );
                 return ResponseEntity.status(502).body(
                     Map.of("error", cause.getMessage())
                 );
