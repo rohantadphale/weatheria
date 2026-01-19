@@ -126,6 +126,17 @@ The following endpoints are available:
 
 The OpenAPI documentation is available at `/swagger-ui.html`.
 
+
+## Load testing (k6)
+
+Install k6, then run a simple load test against the `/api/weather` endpoint:
+
+```bash
+k6 run -e BASE_URL=http://localhost:8080 loadtest/k6/weather.js
+```
+
+Adjust `BASE_URL` if your server runs on a different host or port.
+
 ## Contributing Guidelines
 
 Contributions are welcome! Please feel free to submit a pull request.

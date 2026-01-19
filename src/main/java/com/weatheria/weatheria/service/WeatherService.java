@@ -3,9 +3,9 @@ package com.weatheria.weatheria.service;
 import java.net.URI;
 import java.util.Map;
 
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +36,7 @@ public class WeatherService {
         long startNanos = System.nanoTime();
         String normalizedCity = CityInputValidator.normalize(city);
         URI uri = UriComponentsBuilder.fromUriString(GEOCODING_URL)
-            .queryParam("name", normalizedCity)
+            .queryParam("name", city)
             .build()
             .toUri();
 
@@ -51,7 +51,9 @@ public class WeatherService {
                 return null;
             }
             Object resultsObj = body.get("results");
-            if (resultsObj instanceof java.util.List<?> list && !list.isEmpty()) {
+            if (
+                resultsObj instanceof java.util.List<?> list && !list.isEmpty()
+            ) {
                 Object firstObj = list.get(0);
                 if (!(firstObj instanceof Map<?, ?> first)) {
                     return null;
@@ -90,12 +92,7 @@ public class WeatherService {
         }
     }
 
-    @Cacheable(
-        cacheNames = "weather",
-        key = "T(com.weatheria.weatheria.service.WeatherService).cityKey(#city)",
-        unless = "#result == null"
-    )
-    public WeatherResponse getWeatherForCity(String city) {
+    public WeatherResponse getWeatherForCityInternal(String city) {
         long startNanos = System.nanoTime();
         CityInfo cityInfo = geocodeCity(city);
         if (cityInfo == null) return null;
@@ -209,6 +206,6 @@ public class WeatherService {
     }
 
     public String weatherCodeToDescription(int weatherCode) {
-        return WEATHER_DESCRIPTIONS.getOrDefault(weatherCode, "Unknown weather code");
+        return WEATHER_DESCRIPTIONS.getOrDefault(weatherCode,"Unknown weather code");
     }
 }
